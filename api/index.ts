@@ -176,7 +176,8 @@ async function fetchAPI(endpoint: string, params: Record<string, string>): Promi
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`API 요청 실패: ${response.status}`);
+    const text = await response.text();
+    throw new Error(`API 요청 실패: ${response.status} - ${text.substring(0, 200)}`);
   }
   return response.text();
 }
