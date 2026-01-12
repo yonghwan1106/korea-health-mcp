@@ -20,12 +20,11 @@
   "author": "yonghwan1106",
   "license": "MIT",
   "dependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@vercel/node": "^5.5.16",
-    "typescript": "^5.9.3",
-    "vercel": "^42.3.2"
+    "@vercel/node": "^5.0.0",
+    "typescript": "^5.7.0"
   }
 }
