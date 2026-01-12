@@ -1,0 +1,31 @@
+{
+  "name": "korea-health-mcp",
+  "version": "1.0.0",
+  "description": "Korean Health & Emergency Medical Information MCP Server - 한국 응급의료/병원/약국 정보 조회",
+  "main": "api/index.ts",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "mcp",
+    "korea",
+    "health",
+    "emergency",
+    "hospital",
+    "pharmacy",
+    "medical"
+  ],
+  "author": "yonghwan1106",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vercel/node": "^5.5.16",
+    "typescript": "^5.9.3",
+    "vercel": "^42.3.2"
+  }
+}
