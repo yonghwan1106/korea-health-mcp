@@ -96,7 +96,7 @@ const DEPARTMENT_CODE: Record<string, string> = {
 };
 
 // API 기본 URL
-const API_BASE_URL = 'http://apis.data.go.kr/B552657';
+const API_BASE_URL = 'https://apis.data.go.kr/B552657';
 
 // ============================================================================
 // XML 파싱 유틸리티
