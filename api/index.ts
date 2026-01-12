@@ -166,13 +166,15 @@ function parsePharmacyFromXML(itemXml: string): PharmacyInfo {
 // API 호출 함수
 // ============================================================================
 async function fetchAPI(endpoint: string, params: Record<string, string>): Promise<string> {
-  const url = new URL(`${API_BASE_URL}${endpoint}`);
-  url.searchParams.append('serviceKey', API_KEY);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value) url.searchParams.append(key, value);
-  });
+  // 공공데이터포털 API 키는 이미 URL 인코딩되어 있으므로 직접 문자열로 구성
+  const queryParams = Object.entries(params)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&');
 
-  const response = await fetch(url.toString());
+  const url = `${API_BASE_URL}${endpoint}?serviceKey=${API_KEY}${queryParams ? '&' + queryParams : ''}`;
+
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`API 요청 실패: ${response.status}`);
   }
@@ -654,174 +656,343 @@ const LANDING_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Korea Health MCP - 한국 의료정보 MCP 서버</title>
+  <title>K-Health MCP | 한국 의료정보 AI 서버</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #00D4AA;
+      --primary-dark: #00B894;
+      --accent: #FF6B6B;
+      --bg-dark: #0A0F1C;
+      --bg-card: #111827;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --gradient-1: linear-gradient(135deg, #00D4AA 0%, #00B4D8 100%);
+      --gradient-2: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: 'Noto Sans KR', sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+      font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
       min-height: 100vh;
-      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    /* Animated Background */
+    .bg-pattern {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255, 107, 107, 0.05) 0%, transparent 60%);
+      z-index: 0;
+    }
+    .pulse-ring {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border: 1px solid rgba(0, 212, 170, 0.1);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    .pulse-ring:nth-child(2) { animation-delay: 1s; width: 800px; height: 800px; }
+    .pulse-ring:nth-child(3) { animation-delay: 2s; width: 1000px; height: 1000px; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 0.1; transform: translate(-50%, -50%) scale(1.1); }
     }
     .container {
-      max-width: 900px;
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 60px 20px;
+      padding: 0 24px;
     }
-    .hero {
+    /* Header */
+    header {
+      padding: 80px 0 60px;
       text-align: center;
-      margin-bottom: 60px;
     }
-    .logo {
-      font-size: 64px;
-      margin-bottom: 20px;
+    .logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100px;
+      height: 100px;
+      background: var(--gradient-1);
+      border-radius: 28px;
+      margin-bottom: 32px;
+      box-shadow: 0 20px 60px rgba(0, 212, 170, 0.3);
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .logo-wrap svg {
+      width: 56px;
+      height: 56px;
+      fill: white;
     }
     h1 {
-      font-size: 2.5rem;
+      font-size: 3.5rem;
       font-weight: 700;
+      letter-spacing: -0.02em;
       margin-bottom: 16px;
-      background: linear-gradient(90deg, #60a5fa, #34d399);
+      background: var(--gradient-1);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    .subtitle {
-      font-size: 1.2rem;
-      color: #94a3b8;
-      margin-bottom: 30px;
+    .tagline {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      font-weight: 300;
+      margin-bottom: 28px;
+    }
+    .badge-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
     .badge {
-      display: inline-block;
-      background: rgba(52, 211, 153, 0.2);
-      color: #34d399;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 0.9rem;
+      background: rgba(0, 212, 170, 0.1);
+      border: 1px solid rgba(0, 212, 170, 0.2);
+      border-radius: 100px;
+      font-size: 0.875rem;
+      color: var(--primary);
+    }
+    .badge.accent {
+      background: rgba(255, 107, 107, 0.1);
+      border-color: rgba(255, 107, 107, 0.2);
+      color: var(--accent);
+    }
+    /* Tools Section */
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: var(--gradient-1);
+      border-radius: 2px;
     }
     .tools-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 20px;
-      margin-bottom: 60px;
+      margin-bottom: 64px;
     }
     .tool-card {
-      background: rgba(30, 41, 59, 0.8);
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid rgba(148, 163, 184, 0.1);
-      transition: transform 0.3s, box-shadow 0.3s;
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-1);
+      opacity: 0;
+      transition: opacity 0.3s;
     }
     .tool-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      transform: translateY(-8px);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+      border-color: rgba(0, 212, 170, 0.2);
     }
+    .tool-card:hover::before { opacity: 1; }
     .tool-icon {
-      font-size: 32px;
-      margin-bottom: 12px;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, rgba(0, 212, 170, 0.15), rgba(0, 180, 216, 0.15));
     }
+    .tool-card:nth-child(2) .tool-icon { background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 159, 67, 0.15)); }
+    .tool-card:nth-child(3) .tool-icon { background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)); }
+    .tool-card:nth-child(4) .tool-icon { background: linear-gradient(135deg, rgba(0, 206, 201, 0.15), rgba(0, 212, 170, 0.15)); }
+    .tool-card:nth-child(5) .tool-icon { background: linear-gradient(135deg, rgba(253, 203, 110, 0.15), rgba(255, 159, 67, 0.15)); }
     .tool-name {
       font-size: 1.1rem;
       font-weight: 600;
-      color: #f1f5f9;
       margin-bottom: 8px;
+      font-family: 'Outfit', monospace;
     }
     .tool-desc {
       font-size: 0.9rem;
-      color: #94a3b8;
-      line-height: 1.6;
+      color: var(--text-muted);
+      line-height: 1.7;
     }
-    .usage {
-      background: rgba(30, 41, 59, 0.8);
-      border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 40px;
+    /* Usage Section */
+    .usage-section {
+      background: var(--bg-card);
+      border-radius: 24px;
+      padding: 40px;
+      margin-bottom: 64px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
-    .usage h2 {
-      font-size: 1.5rem;
-      margin-bottom: 20px;
-      color: #60a5fa;
+    .endpoint-box {
+      background: var(--bg-dark);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border: 1px solid rgba(0, 212, 170, 0.2);
     }
-    .endpoint {
-      background: #0f172a;
-      padding: 16px 20px;
-      border-radius: 8px;
-      font-family: monospace;
+    .method-tag {
+      background: var(--gradient-1);
+      color: var(--bg-dark);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    .endpoint-url {
+      font-family: 'Outfit', monospace;
+      font-size: 1.1rem;
+      color: var(--primary);
+    }
+    .examples-title {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .example-item {
+      background: rgba(0, 212, 170, 0.05);
+      border-left: 3px solid var(--primary);
+      padding: 14px 20px;
+      border-radius: 0 10px 10px 0;
+      margin-bottom: 12px;
       font-size: 0.95rem;
-      color: #34d399;
-      margin-bottom: 20px;
-      overflow-x: auto;
+      transition: all 0.3s;
     }
-    .examples {
-      margin-top: 20px;
+    .example-item:hover {
+      background: rgba(0, 212, 170, 0.1);
+      transform: translateX(4px);
     }
-    .example {
-      background: rgba(15, 23, 42, 0.6);
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      color: #cbd5e1;
-    }
-    .footer {
+    /* Footer */
+    footer {
       text-align: center;
-      padding-top: 40px;
-      border-top: 1px solid rgba(148, 163, 184, 0.1);
-      color: #64748b;
+      padding: 40px 0 60px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .footer-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .footer-brand {
+      font-size: 0.875rem;
+      color: var(--primary);
+    }
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 { font-size: 2.5rem; }
+      .tools-grid { grid-template-columns: 1fr; }
+      .usage-section { padding: 28px; }
     }
   </style>
 </head>
 <body>
+  <div class="bg-pattern"></div>
+  <div class="pulse-ring"></div>
+  <div class="pulse-ring"></div>
+  <div class="pulse-ring"></div>
+
   <div class="container">
-    <div class="hero">
-      <div class="logo">🏥</div>
-      <h1>Korea Health MCP</h1>
-      <p class="subtitle">한국 응급의료, 병원, 약국 정보 조회 MCP 서버</p>
-      <span class="badge">5개 도구 지원</span>
-    </div>
+    <header>
+      <div class="logo-wrap">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
+        </svg>
+      </div>
+      <h1>K-Health MCP</h1>
+      <p class="tagline">AI 기반 한국 의료정보 조회 서버</p>
+      <div class="badge-row">
+        <span class="badge">5개 도구</span>
+        <span class="badge">실시간 데이터</span>
+        <span class="badge accent">공공데이터 연동</span>
+      </div>
+    </header>
 
-    <div class="tools-grid">
-      <div class="tool-card">
-        <div class="tool-icon">🚑</div>
-        <div class="tool-name">health_search_emergency</div>
-        <div class="tool-desc">응급의료기관(응급실) 검색. 권역외상센터, 응급의료센터 등을 찾을 수 있습니다.</div>
+    <section>
+      <h2 class="section-title">도구 목록</h2>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-icon">🚑</div>
+          <div class="tool-name">health_search_emergency</div>
+          <div class="tool-desc">응급의료기관 검색. 권역외상센터, 응급의료센터 등 전국 응급실 정보를 조회합니다.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">📊</div>
+          <div class="tool-name">health_get_realtime_er</div>
+          <div class="tool-desc">응급실 실시간 가용병상 조회. 현재 이용 가능한 병상 수를 실시간으로 확인합니다.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">🩺</div>
+          <div class="tool-name">health_search_hospital</div>
+          <div class="tool-desc">병원/의원 검색. 지역별, 진료과목별로 원하는 병원을 찾을 수 있습니다.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">💊</div>
+          <div class="tool-name">health_search_pharmacy</div>
+          <div class="tool-desc">약국 검색. 지역별 약국 목록과 연락처, 운영시간을 조회합니다.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">🗺️</div>
+          <div class="tool-name">health_get_recommendations</div>
+          <div class="tool-desc">의료시설 통합 추천. 응급실, 병원, 약국 정보를 한번에 조회합니다.</div>
+        </div>
       </div>
-      <div class="tool-card">
-        <div class="tool-icon">📊</div>
-        <div class="tool-name">health_get_realtime_er</div>
-        <div class="tool-desc">응급실 실시간 가용병상 조회. 현재 이용 가능한 병상 수를 확인합니다.</div>
-      </div>
-      <div class="tool-card">
-        <div class="tool-icon">🩺</div>
-        <div class="tool-name">health_search_hospital</div>
-        <div class="tool-desc">병원/의원 검색. 지역별, 진료과목별로 병원을 찾을 수 있습니다.</div>
-      </div>
-      <div class="tool-card">
-        <div class="tool-icon">💊</div>
-        <div class="tool-name">health_search_pharmacy</div>
-        <div class="tool-desc">약국 검색. 지역별 약국 목록과 연락처를 조회합니다.</div>
-      </div>
-      <div class="tool-card">
-        <div class="tool-icon">🗺️</div>
-        <div class="tool-name">health_get_recommendations</div>
-        <div class="tool-desc">의료시설 통합 추천. 응급실, 병원, 약국을 한번에 조회합니다.</div>
-      </div>
-    </div>
+    </section>
 
-    <div class="usage">
-      <h2>사용 방법</h2>
-      <div class="endpoint">POST /mcp</div>
-      <div class="examples">
-        <p style="margin-bottom: 12px; color: #94a3b8;">대화 예시:</p>
-        <div class="example">"서울 응급실 실시간 병상 현황 알려줘"</div>
-        <div class="example">"강남구 내과 병원 찾아줘"</div>
-        <div class="example">"부산 해운대구 약국 검색해줘"</div>
+    <section class="usage-section">
+      <h2 class="section-title">사용 방법</h2>
+      <div class="endpoint-box">
+        <span class="method-tag">POST</span>
+        <span class="endpoint-url">/mcp</span>
       </div>
-    </div>
+      <p class="examples-title">대화 예시</p>
+      <div class="example-item">"서울 응급실 실시간 병상 현황 알려줘"</div>
+      <div class="example-item">"강남구 내과 병원 찾아줘"</div>
+      <div class="example-item">"부산 해운대구 약국 검색해줘"</div>
+    </section>
 
-    <div class="footer">
-      <p>Data Source: 공공데이터포털 (data.go.kr) - 국립중앙의료원 응급의료정보</p>
-      <p style="margin-top: 8px;">Made with ❤️ for PlayMCP</p>
-    </div>
+    <footer>
+      <p class="footer-text">Data Source: 공공데이터포털 (data.go.kr) - 국립중앙의료원 응급의료정보</p>
+      <p class="footer-brand">Made for PlayMCP Competition</p>
+    </footer>
   </div>
 </body>
 </html>`;
