@@ -569,15 +569,29 @@ async function handleMCPRequest(request: JsonRpcRequest): Promise<unknown> {
         jsonrpc: '2.0',
         id,
         result: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: (params as Record<string, unknown>)?.protocolVersion || '2024-11-05',
           capabilities: {
-            tools: {},
+            tools: { listChanged: false },
           },
           serverInfo: {
             name: 'korea-health-mcp',
             version: '1.0.0',
           },
         },
+      };
+
+    case 'notifications/initialized':
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: {},
+      };
+
+    case 'ping':
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: {},
       };
 
     case 'tools/list':
@@ -1004,8 +1018,8 @@ const LANDING_HTML = `<!DOCTYPE html>
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, x-session-id, Accept');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -1013,18 +1027,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const path = req.url?.split('?')[0];
 
-  // 헬스체크
-  if (path === '/health') {
+  // 랜딩페이지 (루트 경로만)
+  if (req.method === 'GET' && (path === '/' || path === '')) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(LANDING_HTML);
+  }
+
+  // Health check (모든 다른 GET 요청 - /mcp, /health 등)
+  if (req.method === 'GET') {
     return res.status(200).json({
       status: 'ok',
-      server: 'korea-health-mcp',
+      name: 'korea-health-mcp',
       version: '1.0.0',
-      tools: TOOLS.length,
+      tools: TOOLS.map(t => t.name),
     });
   }
 
-  // MCP 엔드포인트
-  if (path === '/mcp' && req.method === 'POST') {
+  // MCP 엔드포인트 (POST)
+  if (req.method === 'POST') {
     try {
       const body = req.body as JsonRpcRequest;
       const result = await handleMCPRequest(body);
@@ -1041,7 +1061,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 랜딩페이지
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  return res.status(200).send(LANDING_HTML);
+  // 세션 정리 (DELETE)
+  if (req.method === 'DELETE') {
+    return res.status(200).json({ success: true });
+  }
+
+  // 지원하지 않는 메서드
+  return res.status(405).json({ error: 'Method not allowed' });
 }
